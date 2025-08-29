@@ -9,7 +9,7 @@ import Config
 config :hailstorm, HailstormWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT") || "4000")],
+  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT") || "4002")],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -55,8 +55,9 @@ config :hailstorm, HailstormWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :hailstorm, dev_routes: true
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :default_formatter, format: "[$level] $message\n"
+config :logger, :default_formatter,
+  format: "[$level] $metadata $message\n",
+  metadata: [:pid, :request_id, :user_id]
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

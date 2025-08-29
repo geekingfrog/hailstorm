@@ -56,7 +56,17 @@ defmodule HailstormWeb.Telemetry do
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
-      summary("vm.total_run_queue_lengths.io")
+      summary("vm.total_run_queue_lengths.io"),
+
+      # # testing stuff
+      # sum("tachyon.test.value", description: "testing stuff", tags: [:coucou]),
+      # summary("tachyon.test.value"),
+
+      last_value("websockex.terminate.time"),
+
+      sum("tachyon.worker_count.count"),
+      counter("tachyon.party_count.count"),
+      counter("tachyon.worker_error.count")
     ]
   end
 

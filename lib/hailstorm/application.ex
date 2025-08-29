@@ -11,6 +11,12 @@ defmodule Hailstorm.Application do
       HailstormWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:hailstorm, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Hailstorm.PubSub},
+      {Task.Supervisor, name: Hailstorm.TaskSupervisor},
+      # {Hailstorm.TestMetricsTask, 1},
+
+      Hailstorm.LoadTest.System,
+      # {Hailstorm.Party, nil},
+
       # Start a worker by calling: Hailstorm.Worker.start_link(arg)
       # {Hailstorm.Worker, arg},
       # Start to serve requests, typically the last entry
