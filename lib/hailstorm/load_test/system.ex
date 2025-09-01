@@ -11,7 +11,14 @@ defmodule Hailstorm.LoadTest.System do
   end
 
   def start_test(opts \\ %{}) do
-    defaults = %{vus: 1, duration: 10_000, rampup_duration: 0, data_path: "./local-users.jsonl"}
+    defaults = %{
+      vus: 1,
+      duration: 10_000,
+      rampup_duration: 0,
+      rampup_step: 1,
+      data_path: "./local-users.jsonl"
+    }
+
     opts = Map.merge(defaults, opts)
 
     {:ok, start_pid} =
@@ -35,27 +42,37 @@ defmodule Hailstorm.LoadTest.System do
   end
 
   defp start_workers(opts) do
-    sleep_interval =
-      if opts.rampup_duration == 0 do
-        0
-      else
-        (opts.vus - 1) / opts.rampup_duration
-      end
+    plan = rampup(opts.vus, opts.rampup_duration, opts.rampup_step)
 
-    File.stream!(opts.data_path)
-    |> Enum.take(opts.vus)
-    |> Enum.map(&Jason.decode!/1)
-    |> Enum.with_index()
-    |> Enum.each(fn {l, idx} ->
-      if idx > 0 && sleep_interval > 0, do: :timer.sleep(sleep_interval)
+    data =
+      File.stream!(opts.data_path)
+      |> Enum.take(opts.vus)
+      |> Enum.map(&Jason.decode!/1)
+      |> Enum.to_list()
 
+    execute_plan(plan, data)
+  end
+
+  defp execute_plan([], _), do: nil
+
+  defp execute_plan([{:spawn, n} | rest], data) do
+    {data, rest_data} = Enum.split(data, n)
+
+    for d <- data do
       spec =
-        Hailstorm.Party.child_spec(l)
+        Hailstorm.Party.child_spec(d)
         # don't restart workers (for now)
         |> Map.put(:restart, :temporary)
 
       {:ok, _} = DynamicSupervisor.start_child(Hailstorm.WorkerSupervisor, spec)
-    end)
+    end
+
+    execute_plan(rest, rest_data)
+  end
+
+  defp execute_plan([{:sleep, t} | rest], data) do
+    :timer.sleep(t)
+    execute_plan(rest, data)
   end
 
   defp shutdown_workers(start_pid) do
@@ -107,14 +124,14 @@ defmodule Hailstorm.LoadTest.System do
         to_spawn = ((step - time_to_wait) / dt) |> ceil() |> min(n)
         to_wait = to_spawn * dt
 
-        if to_spawn > 0 do
-          actions = [{:spawn, to_spawn} | actions]
-          do_rampup(n - to_spawn, remaining, step, dt, time_to_wait + to_wait, actions)
-        else
+        if to_spawn <= 0 do
           # by that point, step - time_to_wait ≠ 0, and then with ceil(x)
           # `to_spawn` is guaranteed to be greater than 0
           raise "unreachable"
         end
+
+        actions = [{:spawn, to_spawn} | actions]
+        do_rampup(n - to_spawn, remaining, step, dt, time_to_wait + to_wait, actions)
     end
   end
 
